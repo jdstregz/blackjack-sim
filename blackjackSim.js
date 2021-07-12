@@ -1,53 +1,66 @@
 let ACE = {
     display: "ACE",
+    short: "A",
     value: 11
 }
 let KING = {
     display: "KING",
+    short: "K",
     value: 10
 }
 let QUEEN = {
     display: "QUEEN",
+    short: "Q",
     value: 10
 }
 let JACK = {
     display: "JACK",
+    short: "J",
     value: 10,
 }
 let TEN = {
     display: "10",
+    short: "T",
     value: 10
 }
 let NINE = {
     display: "9",
+    short: "9",
     value: 9,
 }
 let EIGHT = {
     display: "8",
+    short: "8",
     value: 8
 }
 let SEVEN = {
     display: "7",
+    short: "7",
     value: 7
 }
 let SIX = {
     display: "6",
+    short: "6",
     value: 6
 }
 let FIVE = {
     display: "5",
+    short: "5",
     value: 5
 }
 let FOUR = {
     display: "4",
+    short: "4",
     value: 4
 }
 let THREE = {
     display: "3",
+    short: "3",
     value: 3,
 }
 let TWO = {
     display: "2",
+    short: "2",
     value: 2
 }
 
@@ -746,6 +759,14 @@ const whatDoesDealerDo = (hand) => {
 
 }
 
+const printHand = (hand) => {
+    let handString = '';
+    for (const card of hand) {
+        handString = handString + `[${card.short}]`;
+    }
+    console.log(handString)
+}
+
 const runBlackJackRound = (deck, bankroll, minBet) => {
     // deal out player hand
     let playerHands = [];
@@ -758,74 +779,192 @@ const runBlackJackRound = (deck, bankroll, minBet) => {
     let playerHandObject = {bet: minBet, hand: playerHand}
     playerHands.push(playerHandObject);
 
+    console.log(`Dealer is showing: [${dealerHand[0].short}]`)
+
     // runs player hand
     for (let i = 0; i < playerHands.length; i += 1) {
+        console.log("Playing new hand");
         let handObject = playerHands[i];
         let hand = handObject.hand;
         let bet = handObject.bet;
         while (true) {
+            printHand(hand)
+            // if user busted then we break
+            let playerValueObject = getHandValueObject(hand);
+            let playerValue = playerValueObject.isSoft ? playerValueObject.highValue : playerValueObject.value;
+            if (playerValue > 21) {
+                break;
+            }
             let action = whatDoIDo(dealerHand[0], hand);
             if (action === HIT) {
+                console.log("HITTING")
                 hand.push(deck.pop());
             } else if (action === STAY) {
+                console.log("STAYING");
                 break;
             } else if (action === DOUBLE) {
+                console.log("DOUBLING");
                 hand.push(deck.pop());
                 bet += bet;
                 break;
             } else if (action === SPLIT) {
+                console.log("SPLITTING")
                 let card = hand[0];
                 hand = [card];
                 hand.push(deck.pop());
                 let newPlayerHand = {
-                    hand = [card, deck.pop()],
+                    hand: [card, deck.pop()],
                     bet: bet,
                 }
                 playerHands.push(newPlayerHand);
             }
         }
+        console.log("Ending hand");
+        printHand(hand);
+    }
+
+    let totalWin = 0;
+    let pushes = 0;
+    let wins = 0;
+    let losses = 0;
+    let totalBusted = 0;
+
+    // if the player busted we need to figure out whether we even need to do the dealer play
+    for (let i = 0; i < playerHands.length; i += 1) {
+        let playerValueObject = getHandValueObject(playerHands[i].hand);
+        let playerValue = playerValueObject.isSoft ? playerValueObject.highValue : playerValueObject.value;
+        console.log(`Player hand ${i + 1} has value: ${playerValue}`);
+        if (playerValue > 21) {
+            console.log(`Player busted, moving on...`)
+            // the player busted;
+            totalBusted += 1;
+            totalWin -= playerHands[i].bet;
+            losses += 1;
+        }
+    }
+
+    if (totalBusted === playerHands.length) {
+        console.log("Player busted all hands, moving onto next round")
+        // we dont run the dealer portion
+        return {
+            totalWin,
+            wins,
+            losses,
+            pushes,
+        }
     }
 
     // player hands are done, so we run dealerHand
+    console.log("Dealer flipping card...")
     while (true) {
+        printHand(dealerHand);
         let dealerValue = getHandValueObject(dealerHand)
         if (dealerValue.isSoft) {
+            console.log(`Dealer has a soft ${dealerValue.highValue}`);
             if (dealerValue.highValue > 16) {
                 break;
             } else {
+                console.log("Dealer hitting...")
                 dealerHand.push(deck.pop());
             }
         } else {
+            console.log(`Dealer has a ${dealerValue.value}`);
             if (dealerValue.value > 16) {
                 break;
             } else {
+                console.log("Dealer hitting...")
                 dealerHand.push(deck.pop());
             }
         }
     }
+    printHand(dealerHand);
 
-    let dealerValue = getHandValueObject(dealerHand);
-    let value = dealerValue.isSoft ? dealerValue.highValue : dealerValue.value;
+    let dealerValueObject = getHandValueObject(dealerHand);
+    let dealerValue = dealerValueObject.isSoft ? dealerValueObject.highValue : dealerValueObject.value;
 
-    let totalWin = 0;
 
     for (let i = 0; i < playerHands.length; i += 1) {
         let handObject = playerHands[i];
-        let playerValue = getHandValueObject(handObject.hand);
-        if (playerValue == 21) {
-            totalWin += handObject.bet * 1.5;
-        } else if (playerValue > )
+        let playerValueObject = getHandValueObject(handObject.hand);
+        let playerValue = playerValueObject.isSoft ? playerValueObject.highValue : playerValueObject.value;
+        if ((playerValue > dealerValue && playerValue <= 21) || (dealerValue > 21 && playerValue <= 21)) {
+            console.log(`Hand ${i + 1} wins`);
+            // playerWins
+            totalWin += handObject.bet;
+            wins += 1;
+        } else if (playerValue < dealerValue  && dealerValue <= 21) {
+            console.log(`Hand ${i + 1} loses`)
+            // player loses
+            totalWin -= handObject.bet;
+            losses += 1;
+        } else if (playerValue === dealerValue && dealerValue <= 21) {
+            console.log(`Hand ${i + 1} pushes`);
+            pushes += 1;
+        }
+    }
+
+    return {
+        totalWin,
+        wins,
+        losses,
+        pushes,
     }
     
 }
 
-const main = (numRounds, numDecks, bankroll, minBet) => {
+const main = (numRounds, numDecks, bankroll, baseBet) => {
     let round = 0;
+    let minBet = baseBet
     let deck = buildDeckStack(numDecks);
-    deck = deck.shuffle;
-    while(round <= numRounds) {
-        round += 1;
-    } 
+    deck = shuffle(deck);
+    let totalWins = 0;
+    let totalLosses = 0;
+    let totalPushes = 0;
+    let maxLossesInARow = 0;
+    let maxWinsInARow = 0;
+    let lossesInARow = 0;
+    let winsInARow = 0;
+    while (round < numRounds && bankroll > minBet) {
+        while (deck.length > 15 && round < numRounds && bankroll >= minBet) {
+            console.log(`----------------- ROUND ${round} -----------------`)
+            const { totalWin, wins, losses, pushes} = runBlackJackRound(deck, bankroll, minBet)
+            totalWins += wins;
+            totalLosses += losses;
+            totalPushes += pushes;
+            bankroll += totalWin;
+            if (totalWin < 0) {
+                // thats a loss
+                lossesInARow += 1;
+                winsInARow = 0;
+                minBet = minBet * 2;
+            } else if (totalWin >= minBet) {
+                lossesInARow = 0;
+                winsInARow += 1;
+                minBet = baseBet;
+            } else {
+                minBet = minBet - totalWin;
+            }
+            if (lossesInARow > maxLossesInARow) {
+                maxLossesInARow = lossesInARow;
+            }
+            if (winsInARow > maxWinsInARow) {
+                maxWinsInARow = winsInARow;
+            }
+            round += 1;
+        }
+        deck = shuffle(buildDeckStack(numDecks));
+    }
+    if (bankroll < minBet) {
+        console.log(`MARTINGALE FAILED! - Min Bet: ${minBet}`)
+    }
+    console.log(`BANKROLL: ${bankroll}`)
+    console.log(`TOTAL WINS: ${totalWins}`);
+    console.log(`TOTAL LOSSES: ${totalLosses}`);
+    console.log(`TOTAL PUSHES: ${totalPushes}`);
+    console.log(`MAX WINS IN A ROW: ${maxWinsInARow}`);
+    console.log(`MAX LOSSES IN A ROW: ${maxLossesInARow}`);
+
+    console.log(`% WIN: ${(totalWins / (totalLosses + totalWins)) * 100}`)
 }
 
 const testWhatDoIDo = () => {
@@ -850,23 +989,21 @@ const testWhatDoIDo = () => {
     console.assert(whatDoIDo(ACE, [EIGHT, EIGHT]) === SPLIT, "11, A7")
     console.assert(whatDoIDo(ACE, [TEN, TEN]) === STAY, "11, TT")
 
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-    //console.log(getHandValueObject([ACE, ACE, ACE, ACE]))
-
 }
 
 testWhatDoIDo();
+main(10000, 8, 5000, 1)
+
+// 1
+// 2
+// 4
+// 8
+// 16
+// 32
+// 64
+// 128
+// 256
+// 512
+// 1024
+// 2048
+// 4096
